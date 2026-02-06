@@ -1,0 +1,334 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Замена | DocumentFlow{% endblock %}
+
+{% block content %}
+<style>
+    .replacement-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+    .replacement-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+    .replacement-card h4 {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+        color: #0f172a;
+    }
+    .replacement-card p {
+        margin: 0;
+        font-size: 12px;
+        color: #64748b;
+    }
+    .replacement-hero {
+        background: linear-gradient(140deg, #f0fdfa 0%, #eef2ff 55%, #ecfeff 100%);
+        border: 1px solid #dbeafe;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+    }
+    .replacement-hero h3 {
+        margin: 0 0 6px 0;
+        font-size: 16px;
+        color: #0f172a;
+    }
+    .replacement-hero p {
+        margin: 0;
+        color: #475569;
+        font-size: 12px;
+    }
+    .replacement-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .replacement-form .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .replacement-form label {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+    .replacement-form input,
+    .replacement-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+    }
+    .replacement-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .replacement-actions .profile-btn.primary {
+        background: #0f766e;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 10px 18px rgba(15, 118, 110, 0.22);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .replacement-actions .profile-btn.primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px rgba(15, 118, 110, 0.28);
+    }
+    .replacement-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .replacement-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e2f7f1;
+        color: #0f766e;
+        font-weight: 600;
+    }
+    .replacement-badge.inactive {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    .replacement-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .replacement-tag {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 11px;
+        color: #475569;
+    }
+    @media (max-width: 900px) {
+        .replacement-form,
+        .replacement-list,
+        .replacement-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ page_title|default:"Замена" }}</h1>
+            <div class="page-subtitle">{{ page_subtitle|default:"Назначение замены" }}</div>
+        </div>
+    </div>
+
+    <div class="replacement-grid" style="margin-bottom:16px;">
+        <div class="replacement-card replacement-hero">
+            <h3>Назначить замену</h3>
+            <p>Назначьте заменяющего сотрудника для себя.</p>
+            <div class="replacement-form" style="margin-top:14px;">
+                <div class="field">
+                    <label>Сотрудник-замена</label>
+                    <select id="replacement_employee" data-current-user="{{ request.user.id }}">
+                        <option value="">Выберите сотрудника</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Причина</label>
+                    <select id="replacement_reason">
+                        <option value="vacation">Отпуск</option>
+                        <option value="sick">Больничный</option>
+                        <option value="business_trip">Командировка</option>
+                        <option value="maternity">Декрет</option>
+                        <option value="idle">Простой</option>
+                        <option value="dismissed">Уволен</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Дата начала</label>
+                    <input type="date" id="replacement_start">
+                </div>
+                <div class="field" id="replacement_end_field">
+                    <label>Дата окончания</label>
+                    <input type="date" id="replacement_end">
+                </div>
+            </div>
+            <div class="replacement-actions">
+                <button class="profile-btn primary" type="button" onclick="createReplacement()">Назначить</button>
+                <div id="replacement_error" class="error-message" style="display:none;"></div>
+            </div>
+        </div>
+        <div class="replacement-card">
+            <h4>Как это работает</h4>
+            <p>Если у вас отпуск или больничный, документы автоматически направляются заменяющему сотруднику.</p>
+            <p style="margin-top:10px;">Смена действует в указанный период и может быть продлена новой записью.</p>
+        </div>
+    </div>
+
+    <div class="profile-card">
+        <div class="profile-section">
+            <h3>Мои замены</h3>
+            <div id="replacement_list" class="replacement-list">
+                <div class="empty-state"><p>Загрузка...</p></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function loadUsers() {
+    fetch('/api/users/')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('replacement_employee');
+            const currentUserId = select ? Number(select.dataset.currentUser) : null;
+            (data.results || data).forEach(u => {
+                if (currentUserId && Number(u.id) === currentUserId) {
+                    return;
+                }
+                const option = document.createElement('option');
+                option.value = u.id;
+                const fio = [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ').trim() || u.username || u.id;
+                const dep = u.department_name || '—';
+                const pos = u.position || '—';
+                option.textContent = `${fio} (${dep}, ${pos})`;
+                select.appendChild(option);
+            });
+        })
+        .catch(() => {});
+}
+
+function loadReplacements() {
+    fetch('/api/replacements/self/')
+        .then(r => r.json())
+        .then(data => {
+            const list = document.getElementById('replacement_list');
+            const items = data.results || [];
+            if (!items.length) {
+                list.innerHTML = '<div class="empty-state"><p>Замены не назначены</p></div>';
+                return;
+            }
+            list.innerHTML = items.map(item => {
+                const endDate = item.end_date ? item.end_date : 'Без окончания';
+                return `
+                <div class="replacement-card">
+                    <h4>${item.replacement_employee.display_name}</h4>
+                    <div class="replacement-meta">
+                        <span class="replacement-tag">${item.reason_display}</span>
+                        <span class="replacement-tag">${item.start_date} — ${endDate}</span>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <span class="replacement-badge ${item.is_active ? '' : 'inactive'}">
+                            ${item.is_active ? 'Активна' : 'Не активна'}
+                        </span>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById('replacement_list').innerHTML = '<div class="empty-state"><p>Ошибка загрузки</p></div>';
+        });
+}
+
+function createReplacement() {
+    const error = document.getElementById('replacement_error');
+    error.style.display = 'none';
+    error.textContent = '';
+
+    fetch('/api/replacements/self/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            replacement_employee: document.getElementById('replacement_employee').value,
+            reason: document.getElementById('replacement_reason').value,
+            start_date: document.getElementById('replacement_start').value,
+            end_date: document.getElementById('replacement_end').value
+        })
+    })
+    .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            throw new Error(data.error || 'Ошибка сохранения');
+        }
+        return data;
+    })
+    .then(() => {
+        const emp = document.getElementById('replacement_employee');
+        if (emp) emp.value = '';
+        const start = document.getElementById('replacement_start');
+        if (start) start.value = '';
+        const end = document.getElementById('replacement_end');
+        if (end) end.value = '';
+        loadReplacements();
+    })
+    .catch(err => {
+        error.textContent = err.message;
+        error.style.display = 'block';
+    });
+}
+
+loadUsers();
+loadReplacements();
+
+const reasonSelect = document.getElementById('replacement_reason');
+const endField = document.getElementById('replacement_end_field');
+const endInput = document.getElementById('replacement_end');
+
+function toggleEndDateField() {
+    if (!reasonSelect || !endField || !endInput) return;
+    if (reasonSelect.value === 'dismissed') {
+        endField.style.display = 'none';
+        endInput.value = '';
+        const startInput = document.getElementById('replacement_start');
+        if (startInput && !startInput.value) {
+            const today = new Date().toISOString().split('T')[0];
+            startInput.value = today;
+        }
+    } else {
+        endField.style.display = '';
+    }
+}
+
+if (reasonSelect) {
+    reasonSelect.addEventListener('change', toggleEndDateField);
+    toggleEndDateField();
+}
+</script>
+{% endblock %}

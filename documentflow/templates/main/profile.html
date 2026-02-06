@@ -1,0 +1,589 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Профиль | DocumentFlow{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --profile-accent: #0f766e;
+        --profile-ink: #0f172a;
+        --profile-muted: #64748b;
+        --profile-soft: #f8fafc;
+        --profile-border: #e2e8f0;
+    }
+    .profile-wrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        position: relative;
+    }
+    .profile-hero {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 40%, #ecfeff 100%);
+        border: 1px solid var(--profile-border);
+        border-radius: 18px;
+        padding: 20px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+    .profile-hero h2 {
+        font-size: 20px;
+        margin: 0 0 6px 0;
+        color: var(--profile-ink);
+    }
+    .profile-hero p {
+        margin: 0;
+        color: var(--profile-muted);
+        font-size: 13px;
+    }
+    .profile-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .profile-chip {
+        background: #fff;
+        border: 1px solid var(--profile-border);
+        color: var(--profile-ink);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .profile-card {
+        background: #fff;
+        border: 1px solid var(--profile-border);
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    }
+    .profile-section {
+        margin-bottom: 22px;
+    }
+    .profile-section:last-child {
+        margin-bottom: 0;
+    }
+    .profile-section h3 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--profile-muted);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .profile-section h3::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        background: var(--profile-accent);
+    }
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .profile-field {
+        background: var(--profile-soft);
+        border: 1px solid var(--profile-border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        min-height: 68px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .profile-label {
+        color: var(--profile-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 6px;
+    }
+    .profile-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--profile-ink);
+        word-break: break-word;
+    }
+    .profile-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .profile-btn {
+        background: #fff;
+        border: 1px solid var(--profile-border);
+        color: var(--profile-ink);
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .profile-btn.primary {
+        background: var(--profile-accent);
+        color: #fff;
+        border-color: transparent;
+    }
+    .profile-btn.danger {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+    .email-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1200;
+    }
+    .email-modal.active {
+        display: flex;
+    }
+    .email-modal-content {
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px;
+        width: min(420px, 92vw);
+        border: 1px solid var(--profile-border);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+    }
+    .email-modal-content h3 {
+        margin: 0 0 6px 0;
+        font-size: 16px;
+        color: var(--profile-ink);
+    }
+    .email-modal-content p {
+        margin: 0 0 14px 0;
+        font-size: 12px;
+        color: var(--profile-muted);
+    }
+    .email-modal-content .input-group {
+        margin-bottom: 10px;
+        position: relative;
+    }
+    .email-modal-content input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--profile-border);
+        font-size: 13px;
+    }
+    .email-modal-content .password-toggle {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+    }
+    .email-modal-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
+    .email-resend {
+        background: transparent;
+        border: none;
+        color: var(--profile-accent);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 0;
+    }
+    .email-resend[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .email-error {
+        color: #b91c1c;
+        font-size: 12px;
+        margin-top: 8px;
+        display: none;
+    }
+    .email-step {
+        display: none;
+    }
+    .email-step.active {
+        display: block;
+    }
+    @media (max-width: 900px) {
+        .profile-hero {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .profile-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ page_title|default:"Профиль" }}</h1>
+            <div class="page-subtitle">{{ page_subtitle|default:"Личные данные" }}</div>
+        </div>
+    </div>
+
+    <div class="profile-wrap">
+        <div class="profile-hero">
+            <div>
+                <h2>Профиль пользователя</h2>
+                <p>Данные вашей учетной записи и рабочего профиля.</p>
+            </div>
+            <div class="profile-chips">
+                <div class="profile-chip">@{{ request.user.username }}</div>
+                <div class="profile-chip">{{ request.user.position|default:"Должность не указана" }}</div>
+                <div class="profile-chip">{{ request.user.department.name|default:request.user.department|default:"Отдел не указан" }}</div>
+            </div>
+        </div>
+        <div class="profile-card">
+            <div class="profile-section">
+                <h3>Личные данные</h3>
+                <div class="profile-grid">
+                    <div class="profile-field">
+                        <div class="profile-label">Фамилия</div>
+                        <div class="profile-value">{{ request.user.last_name|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Имя</div>
+                        <div class="profile-value">{{ request.user.first_name|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Отчество</div>
+                        <div class="profile-value">{{ request.user.middle_name|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Логин</div>
+                        <div class="profile-value">{{ request.user.username }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Email</div>
+                        <div class="profile-value">{{ request.user.email|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Телефон</div>
+                        <div class="profile-value">{{ request.user.phone|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Статус</div>
+                        <div class="profile-value">{{ request.user.get_status_display|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h3>Работа</h3>
+                <div class="profile-grid">
+                    <div class="profile-field">
+                        <div class="profile-label">Должность</div>
+                        <div class="profile-value">{{ request.user.position|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Отдел</div>
+                        <div class="profile-value">{{ request.user.department.name|default:request.user.department|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Кабинет</div>
+                        <div class="profile-value">{{ request.user.room|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Роль</div>
+                        <div class="profile-value">{{ request.user.role.name|default:request.user.role|default:"—" }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Отдел (код)</div>
+                        <div class="profile-value">{{ request.user.department.code|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="profile-section">
+                    <h3>Действия</h3>
+                    <div class="profile-actions">
+                        <a href="/password-change/" class="profile-btn primary">Сменить пароль</a>
+                        <button type="button" class="profile-btn" onclick="openEmailModal()">Сменить email</button>
+                        <button type="button" class="profile-btn danger" onclick="logoutUser()">Выйти</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="email-modal" id="emailModal">
+    <div class="email-modal-content">
+        <h3>Смена email</h3>
+        <p>Сначала подтвердите запрос кодом на старой почте.</p>
+        <div class="email-step active" id="emailStepRequest">
+            <div class="input-group">
+                <input type="email" id="new_email" placeholder="Новый email">
+            </div>
+            <div class="input-group">
+                <input type="password" id="email_password" placeholder="Текущий пароль">
+                <button type="button" class="password-toggle" onclick="togglePassword('email_password', this)">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+        <div class="email-step" id="emailStepConfirm">
+            <div class="input-group">
+                <input type="text" id="email_code" placeholder="Код из письма">
+            </div>
+            <button type="button" class="email-resend" id="emailResendBtn" onclick="resendEmailCode()">
+                Отправить код повторно
+            </button>
+        </div>
+        <div class="email-error" id="emailError"></div>
+        <div class="email-modal-actions">
+            <button class="profile-btn" type="button" onclick="closeEmailModal()">Отмена</button>
+            <button class="profile-btn primary" type="button" onclick="submitEmailChange()">Получить код</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) {
+        icon.classList.toggle('fa-eye', !isHidden);
+        icon.classList.toggle('fa-eye-slash', isHidden);
+    }
+}
+
+function logoutUser() {
+    fetch('/api/logout/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'same-origin'
+    }).finally(() => {
+        window.location.href = '/';
+    });
+}
+
+function openEmailModal() {
+    const modal = document.getElementById('emailModal');
+    if (modal) modal.classList.add('active');
+    setEmailStep('request');
+}
+
+function closeEmailModal() {
+    const modal = document.getElementById('emailModal');
+    const error = document.getElementById('emailError');
+    if (modal) modal.classList.remove('active');
+    if (error) {
+        error.textContent = '';
+        error.style.display = 'none';
+    }
+    const newEmail = document.getElementById('new_email');
+    const password = document.getElementById('email_password');
+    const code = document.getElementById('email_code');
+    if (newEmail) newEmail.value = '';
+    if (password) password.value = '';
+    if (code) code.value = '';
+    setEmailStep('request');
+}
+
+function submitEmailChange() {
+    const error = document.getElementById('emailError');
+    const stepConfirm = document.getElementById('emailStepConfirm').classList.contains('active');
+
+    error.textContent = '';
+    error.style.display = 'none';
+
+    if (!stepConfirm) {
+        const newEmail = document.getElementById('new_email').value.trim();
+        const password = document.getElementById('email_password').value;
+
+        if (!newEmail || !password) {
+            error.textContent = 'Заполните все поля';
+            error.style.display = 'block';
+            return;
+        }
+
+        fetch('/api/email-change/request/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                new_email: newEmail,
+                password: password
+            })
+        })
+        .then(response => {
+            return parseJsonSafe(response).then(data => {
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка отправки кода');
+                }
+                return data;
+            });
+        })
+        .then(() => {
+            setEmailStep('confirm');
+        })
+        .catch(err => {
+            error.textContent = err.message;
+            error.style.display = 'block';
+        });
+    } else {
+        const code = document.getElementById('email_code').value.trim();
+        if (!code) {
+            error.textContent = 'Введите код';
+            error.style.display = 'block';
+            return;
+        }
+
+        fetch('/api/email-change/confirm/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                code: code
+            })
+        })
+        .then(response => {
+            return parseJsonSafe(response).then(data => {
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка подтверждения');
+                }
+                return data;
+            });
+        })
+        .then(() => {
+            closeEmailModal();
+            window.location.reload();
+        })
+        .catch(err => {
+            error.textContent = err.message;
+            error.style.display = 'block';
+        });
+    }
+}
+
+function setEmailStep(step) {
+    const requestStep = document.getElementById('emailStepRequest');
+    const confirmStep = document.getElementById('emailStepConfirm');
+    const actionBtn = document.querySelector('.email-modal-actions .profile-btn.primary');
+
+    if (step === 'confirm') {
+        if (requestStep) requestStep.classList.remove('active');
+        if (confirmStep) confirmStep.classList.add('active');
+        if (actionBtn) actionBtn.textContent = 'Подтвердить';
+    } else {
+        if (confirmStep) confirmStep.classList.remove('active');
+        if (requestStep) requestStep.classList.add('active');
+        if (actionBtn) actionBtn.textContent = 'Получить код';
+    }
+}
+
+function resendEmailCode() {
+    const error = document.getElementById('emailError');
+    const btn = document.getElementById('emailResendBtn');
+
+    error.textContent = '';
+    error.style.display = 'none';
+    if (btn) btn.disabled = true;
+
+    fetch('/api/email-change/resend/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        return parseJsonSafe(response).then(data => {
+            if (!response.ok) {
+                throw new Error(data.error || 'Ошибка отправки');
+            }
+            return data;
+        });
+    })
+    .then(() => {
+        startResendCountdown(60);
+    })
+    .catch(err => {
+        error.textContent = err.message;
+        error.style.display = 'block';
+        if (btn) btn.disabled = false;
+    });
+}
+
+function parseJsonSafe(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+    return response.text().then(() => {
+        throw new Error('Сервер вернул HTML вместо JSON. Проверьте авторизацию и миграции.');
+    });
+}
+
+function startResendCountdown(seconds) {
+    const btn = document.getElementById('emailResendBtn');
+    if (!btn) return;
+    let remaining = seconds;
+    btn.disabled = true;
+    btn.textContent = `Отправить повторно через ${remaining}s`;
+    const timer = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.textContent = 'Отправить код повторно';
+        } else {
+            btn.textContent = `Отправить повторно через ${remaining}s`;
+        }
+    }, 1000);
+}
+
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('emailModal');
+    if (!modal || !modal.classList.contains('active')) return;
+    if (event.target === modal) {
+        closeEmailModal();
+    }
+});
+</script>
+{% endblock %}

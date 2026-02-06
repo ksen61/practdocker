@@ -1,0 +1,384 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Статистика | DocumentFlow{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ page_title|default:"Статистика" }}</h1>
+            <div class="page-subtitle">{{ page_subtitle|default:"Показатели сотрудника" }}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-content">
+        <style>
+            .stats-page {
+                background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+                border-radius: 18px;
+                padding: 18px;
+                border: 1px solid #e5e7eb;
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0,1fr));
+                gap: 14px;
+            }
+            .stats-row {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0,1fr));
+                gap: 14px;
+            }
+            .stats-card {
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                padding: 16px;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+                position: relative;
+            }
+            .stats-card::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 3px;
+                width: 100%;
+                background: linear-gradient(90deg, #0f766e, #0ea5e9);
+                border-radius: 14px 14px 0 0;
+            }
+            .stats-card h3 {
+                margin: 0 0 8px 0;
+                font-size: 13px;
+                color: #0f172a;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+            .stats-card .subtitle {
+                font-size: 12px;
+                color: #64748b;
+                margin-bottom: 12px;
+            }
+            .stats-list {
+                display: grid;
+                gap: 10px;
+            }
+            .stats-item {
+                display: flex;
+                justify-content: space-between;
+                font-size: 13px;
+                color: #334155;
+            }
+            .stats-badge {
+                background: #ecfeff;
+                color: #0f766e;
+                border-radius: 999px;
+                padding: 2px 8px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            .stats-card .chart-container {
+                position: relative;
+                z-index: 1;
+            }
+            .stats-footer {
+                margin-top: 12px;
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .stats-pill {
+                background: #f8fafc;
+                color: #475569;
+                font-size: 11px;
+                padding: 4px 8px;
+                border-radius: 999px;
+            }
+            .stat-kpi {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 12px;
+            }
+            .stat-kpi h3 {
+                font-size: 20px;
+                margin: 0;
+                color: #0f172a;
+                letter-spacing: 0;
+                text-transform: none;
+            }
+            .stat-kpi p {
+                margin: 0;
+                color: #64748b;
+                font-size: 12px;
+            }
+            @media (max-width: 1000px) {
+                .stats-grid {
+                    grid-template-columns: repeat(2, minmax(0,1fr));
+                }
+                .stats-row {
+                    grid-template-columns: repeat(2, minmax(0,1fr));
+                }
+            }
+            @media (max-width: 640px) {
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                }
+                .stats-row {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+        <div class="stats-page">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#e0f2fe;">
+                        <i class="fas fa-folder" style="color:#0ea5e9;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ total_docs|default:"0" }}</h3>
+                        <p>Всего документов</p>
+                    </div>
+                </div>
+                <small>Создано вами</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#dcfce7;">
+                        <i class="fas fa-paper-plane" style="color:#16a34a;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ outgoing_count|default:"0" }}</h3>
+                        <p>Исходящие</p>
+                    </div>
+                </div>
+                <small>В работе</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#e0f2fe;">
+                        <i class="fas fa-inbox" style="color:#0ea5e9;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ incoming_count|default:"0" }}</h3>
+                        <p>Входящие</p>
+                    </div>
+                </div>
+                <small>Требуют решения</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#ffedd5;">
+                        <i class="fas fa-check-circle" style="color:#f97316;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ on_approval|default:"0" }}</h3>
+                        <p>На согласовании</p>
+                    </div>
+                </div>
+                <small>Ваши отправленные</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#ede9fe;">
+                        <i class="fas fa-check-double" style="color:#7c3aed;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ completed_docs|default:"0" }}</h3>
+                        <p>Завершённые</p>
+                    </div>
+                </div>
+                <small>Финальные статусы</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#fee2e2;">
+                        <i class="fas fa-clock" style="color:#ef4444;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ overdue_docs|default:"0" }}</h3>
+                        <p>Просроченные</p>
+                    </div>
+                </div>
+                <small>Есть риск срыва</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#e0f2fe;">
+                        <i class="fas fa-file-alt" style="color:#0284c7;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ on_revision|default:"0" }}</h3>
+                        <p>На доработке</p>
+                    </div>
+                </div>
+                <small>Возвращены</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-kpi">
+                    <div class="stat-icon" style="background:#f1f5f9;">
+                        <i class="fas fa-archive" style="color:#475569;"></i>
+                    </div>
+                    <div>
+                        <h3>{{ archived_count|default:"0" }}</h3>
+                        <p>В архиве</p>
+                    </div>
+                </div>
+                <small>Закрытые</small>
+            </div>
+        </div>
+
+        <div class="stats-row" style="margin-top:20px;">
+            <div class="stats-card">
+                <h3>Статусы документов</h3>
+                <div class="subtitle">Распределение по статусам</div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+            <div class="stats-card">
+                <h3>Решения (30 дней)</h3>
+                <div class="subtitle">Согласование, отклонения и возвраты</div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="decisionChart"></canvas>
+                </div>
+            </div>
+            <div class="stats-card">
+                <h3>По приоритетам</h3>
+                <div class="subtitle">Уровень срочности</div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-row" style="margin-top:20px;">
+            <div class="stats-card">
+                <h3>По типам документов</h3>
+                <div class="subtitle">Чаще всего обрабатываемые</div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+            <div class="stats-card">
+                <h3>Сроки и качество</h3>
+                <div class="stats-list">
+                    <div class="stats-item">
+                        <span>В срок</span>
+                        <span class="stats-badge">{{ on_time|default:"0" }}</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>С нарушением сроков</span>
+                        <span class="stats-badge">{{ late_docs|default:"0" }}</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Возвраты на доработку</span>
+                        <span class="stats-badge">{{ returns_count|default:"0" }}</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Повторные согласования</span>
+                        <span class="stats-badge">{{ reapprovals_count|default:"0" }}</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Среднее время обработки</span>
+                        <span class="stats-badge">{{ avg_hours|default:"—" }} ч</span>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-card">
+                <h3>Срочные документы</h3>
+                <div class="subtitle">Ближайшие дедлайны</div>
+                <div class="stats-list">
+                    {% for doc in urgent_docs %}
+                        <div class="stats-item">
+                            <span>{{ doc.registration_number }} — {{ doc.title|truncatechars:26 }}</span>
+                            <span class="stats-badge">{{ doc.deadline|date:"d.m.Y" }}</span>
+                        </div>
+                    {% empty %}
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <p>Срочных документов нет</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ status_labels|safe }},
+        datasets: [{
+            data: {{ status_counts|safe }},
+            backgroundColor: [
+                '#60a5fa', '#f59e0b', '#10b981', '#f472b6', '#a78bfa',
+                '#38bdf8', '#fb7185', '#34d399', '#f97316'
+            ]
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+
+const decisionCtx = document.getElementById('decisionChart').getContext('2d');
+new Chart(decisionCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Согласовано', 'Отклонено', 'Возврат', 'Ознакомлено', 'Исполнено'],
+        datasets: [{
+            data: [
+                {{ decision_counts.approved|default:"0" }},
+                {{ decision_counts.rejected|default:"0" }},
+                {{ decision_counts.returned|default:"0" }},
+                {{ decision_counts.acknowledged|default:"0" }},
+                {{ decision_counts.executed|default:"0" }}
+            ],
+            backgroundColor: ['#22c55e', '#ef4444', '#f97316', '#3b82f6', '#8b5cf6']
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+
+const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+new Chart(priorityCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ priority_labels|safe }},
+        datasets: [{
+            data: {{ priority_counts|safe }},
+            backgroundColor: ['#60a5fa', '#f59e0b', '#f97316', '#ef4444']
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+
+const typeCtx = document.getElementById('typeChart').getContext('2d');
+new Chart(typeCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ type_labels|safe }},
+        datasets: [{
+            data: {{ type_counts|safe }},
+            backgroundColor: [
+                '#60a5fa', '#f59e0b', '#10b981', '#f472b6', '#a78bfa',
+                '#38bdf8', '#fb7185', '#34d399', '#f97316'
+            ]
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+{% endblock %}

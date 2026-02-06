@@ -1,0 +1,1397 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Отправить документ | DocumentFlow{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/senddoc.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    /* Стили для конструктора маршрута */
+    .route-step-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .step-badge {
+        background: #1a73e8;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+    .route-preview {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+    }
+    .route-preview li {
+        padding: 10px;
+        border-left: 2px solid #1a73e8;
+        margin-bottom: 5px;
+        background: #f0f7ff;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+    }
+    .step-num {
+        background: #1a73e8;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .radio-label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .radio-label input[type="radio"] {
+        margin-right: 8px;
+    }
+    .is-invalid {
+        border-color: #dc3545 !important;
+    }
+    .form-error {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+    .btn-loading {
+        display: none;
+    }
+    .btn-loading.show {
+        display: inline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="{% url 'documentflow:dashboard' %}" class="btn btn-icon" style="background: #f8f9fa; color: #6c757d;">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1>Отправить документ</h1>
+                    <p class="dashboard-subtitle">Заполните форму для отправки документа в системе</p>
+                </div>
+            </div>
+        </div>
+
+        <form id="documentForm" class="document-form">
+            {% csrf_token %}
+            <div class="dashboard-section">
+                <div class="content-row">
+                    <!-- Основная информация -->
+                    <div class="content-col">
+                        <div class="form-section">
+                            <div class="section-header">
+                                <h2><i class="fas fa-file-alt" style="margin-right: 8px;"></i>Основная информация</h2>
+                            </div>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="title" class="form-label required">Тема документа</label>
+                                    <input type="text" id="title" name="title" class="form-control" placeholder="Введите тему документа" required>
+                                    <div class="form-error" id="title-error"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="document_type" class="form-label required">Тип документа</label>
+                                    <select id="document_type" name="document_type" class="form-control select2" required>
+                                        <option value="">Выберите тип документа</option>
+                                    </select>
+                                    <div class="form-error" id="document_type-error"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="priority" class="form-label required">Приоритет</label>
+                                    <select id="priority" name="priority" class="form-control" required>
+                                        <option value="normal">Обычный</option>
+                                        <option value="high">Высокий</option>
+                                        <option value="urgent">Срочный</option>
+                                        <option value="low">Низкий</option>
+                                    </select>
+                                    <div class="form-error" id="priority-error"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description" class="form-label">Описание документа</label>
+                                <textarea id="description" name="description" class="form-control form-control-textarea" placeholder="Опишите содержание документа..." rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Даты и метаданные -->
+                    <div class="content-col">
+                        <div class="form-section">
+                            <div class="section-header">
+                                <h2><i class="fas fa-calendar-alt" style="margin-right: 8px;"></i>Даты и метаданные</h2>
+                            </div>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="deadline" class="form-label required">Срок исполнения</label>
+                                    <input type="date" id="deadline" name="deadline" class="form-control" required>
+                                    <div class="form-error" id="deadline-error"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="section-header">
+                                <h2><i class="fas fa-share-alt" style="margin-right: 8px;"></i>Маршрут согласования</h2>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="action_type" class="form-label required">Тип обработки</label>
+                                <select id="action_type" name="action_type" class="form-control" required>
+                                    <option value="approve">Согласование</option>
+                                    <option value="acknowledge">Ознакомление</option>
+                                    <option value="execute">Исполнение</option>
+                                </select>
+                                <div class="form-error" id="action_type-error"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="delivery_mode" class="form-label required">Способ выбора согласующих</label>
+                                <select id="delivery_mode" name="delivery_mode" class="form-control" required>
+                                    <option value="auto">Автоматически (по шаблону типа)</option>
+                                    <option value="manual">Ручной конструктор</option>
+                                </select>
+                                <small class="form-help">Автоматическая рассылка назначает получателей на основе маршрута документа</small>
+                            </div>
+
+                            <!-- Автоматическая рассылка -->
+                            <div id="autoRouteBlock" style="margin-top: 15px;">
+                                <label class="form-label text-muted">Ожидаемый маршрут:</label>
+                                <ul class="route-preview" id="routePreviewList">
+                                    <li>Выберите тип документа для просмотра маршрута</li>
+                                </ul>
+                            </div>
+
+                            <!-- Ручная рассылка -->
+                            <div id="manualRouteBlock" style="display:none; margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Конструктор маршрута:</label>
+                                    <div id="manualStepsContainer">
+                                        <!-- Шаги будут добавляться здесь -->
+                                    </div>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addManualStep()" style="margin-top: 10px;">
+                                        <i class="fas fa-plus"></i> Добавить этап
+                                    </button>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Порядок согласования</label>
+                                    <div id="manualRouteSettings">
+                                        <label style="display: block; margin-bottom: 8px;">
+                                            <input type="radio" name="approval_order" value="sequential" checked> Последовательно (строго по порядку)
+                                        </label>
+                                        <label style="display: block; margin-bottom: 8px;">
+                                            <input type="radio" name="approval_order" value="parallel"> Параллельно (всем одновременно)
+                                        </label>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Файлы -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-paperclip" style="margin-right: 8px;"></i>Прикрепленные файлы</h2>
+                    </div>
+                    
+                    <div class="file-upload-wrapper">
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="upload-text">
+                                <p>Перетащите файлы сюда или нажмите для выбора</p>
+                            </div>
+                            <input type="file" id="fileInput" multiple class="file-input-hidden">
+                            <p class="upload-hint">Максимум 10 МБ на файл</p>
+                        </div>
+                        
+                        <div id="fileList" class="file-list" style="display: none;">
+                            <div class="file-list-header">
+                                <span>Файлы</span>
+                                <button type="button" class="btn-clear-files" id="clearAllFiles">
+                                    <i class="fas fa-trash-alt"></i> Удалить все
+                                </button>
+                            </div>
+                            <div class="file-items-container" id="fileItemsContainer">
+                                <!-- Файлы будут добавляться сюда -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки отправки -->
+                <div class="form-actions-section">
+                    <div class="form-actions">
+                        <a href="{% url 'documentflow:dashboard' %}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Отмена
+                        </a>
+                        <button type="button" class="btn btn-secondary btn-lg" id="draftBtn">
+                            <i class="fas fa-save"></i> В черновик
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-paper-plane"></i> Отправить документ
+                            </span>
+                            <span class="btn-loading">
+                                <i class="fas fa-spinner fa-spin"></i> Отправка...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<template id="stepTemplate">
+    <div class="route-step-card">
+        <div class="step-badge">1</div>
+
+        <div style="flex-grow: 1;">
+            <select class="step-target-type form-control mb-2" onchange="toggleStepSelect(this)">
+                <option value="user">Конкретный сотрудник</option>
+                <option value="department">Весь отдел</option>
+            </select>
+            <select class="step-data-select form-control select2-step" style="width: 100%;"></select>
+        </div>
+
+        <div class="step-actions" style="display:flex; flex-direction:column; gap:4px;">
+            <button type="button" class="btn btn-icon" onclick="moveStepUp(this)">
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            <button type="button" class="btn btn-icon" onclick="moveStepDown(this)">
+                <i class="fas fa-arrow-down"></i>
+            </button>
+            <button type="button" class="btn btn-icon text-danger" onclick="removeStep(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Проверяем, загружен ли jQuery и Select2
+if (typeof jQuery === 'undefined') {
+    console.error('jQuery не загружен');
+    // Динамически загружаем jQuery
+    const script = document.createElement('script');
+    script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+    script.onload = function() {
+        // После загрузки jQuery загружаем Select2
+        loadSelect2();
+        initApp();
+    };
+    document.head.appendChild(script);
+} else {
+    loadSelect2();
+    initApp();
+}
+
+function loadSelect2() {
+    if (typeof $.fn.select2 === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js';
+        script.onload = function() {
+            initApp();
+        };
+        document.head.appendChild(script);
+    } else {
+        initApp();
+    }
+}
+
+function initApp() {
+    // Инициализация
+    initSelect2();
+    initFileUpload();
+    
+    // Загрузка данных
+    loadInitialData();
+    initDraftMode();
+    
+    // Установка даты по умолчанию
+    const today = new Date();
+    today.setDate(today.getDate() + 7);
+    const deadlineInput = document.getElementById('deadline');
+    if (deadlineInput) {
+        deadlineInput.value = today.toISOString().split('T')[0];
+        deadlineInput.min = new Date().toISOString().split('T')[0];
+    }
+    
+    // Обработчики событий
+    document.getElementById('documentForm').addEventListener('submit', handleFormSubmit);
+    document.getElementById('draftBtn').addEventListener('click', handleDraftSubmit);
+    document.getElementById('delivery_mode').addEventListener('change', toggleDeliveryMode);
+    document.getElementById('document_type').addEventListener('change', updateAutoPreview);
+}
+
+// ==========================================
+// 1. Инициализация Select2
+// ==========================================
+function initSelect2() {
+    if (typeof $.fn.select2 === 'undefined') {
+        console.error('Select2 не загружен');
+        return;
+    }
+    
+    // Инициализация основных селектов
+    $('.select2').select2({
+        width: '100%',
+        placeholder: 'Выберите...'
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initApp();
+});
+
+let currentDraftId = null;
+let draftDataReady = false;
+let draftSelectsReady = false;
+let draftData = null;
+
+function initDraftMode() {
+    const params = new URLSearchParams(window.location.search);
+    const draftId = params.get('draft_id');
+    if (!draftId) return;
+    currentDraftId = draftId;
+    loadDraftData(draftId);
+}
+
+async function loadDraftData(draftId) {
+    try {
+        const response = await fetch(`/api/documents/${draftId}/`);
+        if (!response.ok) return;
+        draftData = await response.json();
+        draftDataReady = true;
+        applyDraftDataIfReady();
+    } catch (error) {
+        console.error('Ошибка загрузки черновика:', error);
+    }
+}
+
+
+// ============ 1. ЗАГРУЗКА НАЧАЛЬНЫХ ДАННЫХ ============
+
+async function loadInitialData() {
+    try {
+        console.log('Загрузка справочников из API...');
+        
+        // Загружаем типы документов
+        const documentTypes = await fetchData('/api/document-types/');
+        console.log('Типы документов:', documentTypes);
+        
+        // Загружаем пользователей
+        const users = await fetchData('/api/users/');
+        console.log('Сотрудники:', users);
+        
+        // Загружаем отделы
+        const departments = await fetchData('/api/departments/');
+        console.log('Отделы:', departments);
+        
+        // Сохраняем в глобальные переменные
+        window.usersData = users || [];
+        window.departmentsData = departments || [];
+        
+        // Заполняем основные селекты
+        populateSelect('#document_type', documentTypes, 'id', 'name');
+        populateSelect('#responsible', users, 'id', 'full_name', 'username');
+        
+        // Устанавливаем deadline на 7 дней вперед
+        const today = new Date();
+        today.setDate(today.getDate() + 7);
+        const deadlineInput = document.getElementById('deadline');
+        if (deadlineInput) {
+            deadlineInput.value = today.toISOString().split('T')[0];
+            deadlineInput.min = new Date().toISOString().split('T')[0];
+        }
+        draftSelectsReady = true;
+        applyDraftDataIfReady();
+    } catch (error) {
+    }
+}
+
+function applyDraftDataIfReady() {
+    if (!draftDataReady || !draftSelectsReady || !draftData) return;
+
+    const title = document.getElementById('title');
+    if (title) title.value = draftData.title || '';
+
+    const description = document.getElementById('description');
+    if (description) description.value = draftData.description || '';
+
+    const deadline = document.getElementById('deadline');
+    if (deadline && draftData.deadline) deadline.value = draftData.deadline;
+
+    const priority = document.getElementById('priority');
+    if (priority) priority.value = draftData.priority || 'normal';
+
+    const documentType = document.getElementById('document_type');
+    if (documentType) {
+        documentType.value = draftData.document_type || '';
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery(documentType).trigger('change');
+        }
+    }
+
+    const deliveryMode = document.getElementById('delivery_mode');
+    if (deliveryMode) {
+        deliveryMode.value = draftData.delivery_mode || 'auto';
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery(deliveryMode).trigger('change');
+        }
+        toggleDeliveryMode();
+    }
+
+    if (draftData.document_type && (draftData.delivery_mode || 'auto') === 'auto') {
+        updateAutoPreview();
+    }
+
+    const actionType = document.getElementById('action_type');
+    if (actionType) {
+        actionType.value = draftData.action_type || 'approve';
+    }
+
+    const approvalOrderRadios = document.getElementsByName('approval_order');
+    if (approvalOrderRadios && draftData.approval_order) {
+        approvalOrderRadios.forEach(radio => {
+            radio.checked = (radio.value === draftData.approval_order);
+        });
+    }
+
+    if (draftData.delivery_mode === 'manual' && Array.isArray(draftData.manual_route)) {
+        loadManualRouteFromDraft(draftData.manual_route);
+    }
+}
+
+function loadManualRouteFromDraft(route) {
+    const container = document.getElementById('manualStepsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    route.forEach(step => addManualStepFromDraft(step));
+    reindexManualSteps();
+}
+
+function addManualStepFromDraft(step) {
+    const container = document.getElementById('manualStepsContainer');
+    const template = document.getElementById('stepTemplate');
+    const clone = template.content.cloneNode(true);
+
+    const card = clone.querySelector('.route-step-card');
+    const badge = card.querySelector('.step-badge');
+    badge.textContent = container.children.length + 1;
+
+    const typeSelect = card.querySelector('.step-target-type');
+    const dataSelect = card.querySelector('.step-data-select');
+
+    if (step.type) {
+        typeSelect.value = step.type;
+        initStepDataSelect(dataSelect, step.type);
+        dataSelect.value = step.id;
+    }
+
+    container.appendChild(clone);
+    $(dataSelect).trigger('change');
+}
+
+
+// ============ 2. FETCH DATA ============
+
+async function fetchData(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // Обработка pagination
+        return Array.isArray(data) ? data : (data.results || []);
+    } catch (error) {
+        console.error(`Ошибка при запросе к ${url}:`, error);
+        throw error;
+    }
+}
+
+
+// ============ 3. ЗАПОЛНЕНИЕ СЕЛЕКТОВ ============
+
+function populateSelect(selector, data, valueKey, textKey, fallbackKey = null) {
+    const select = document.querySelector(selector);
+    if (!select || !data || !Array.isArray(data)) {
+        console.warn(`Ошибка populateSelect: ${selector}`, select, data);
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Выберите...</option>';
+    
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item[valueKey];
+        
+        let text = item[textKey];
+        if (!text && fallbackKey) {
+            text = item[fallbackKey];
+        }
+        if (!text) {
+            text = `ID: ${item[valueKey]}`;
+        }
+        
+        option.textContent = text;
+        select.appendChild(option);
+    });
+    
+    // Переинициализируем Select2 если он загружен
+    if (jQuery && jQuery.fn.select2) {
+        if (!select.classList.contains('select2-hidden-accessible')) {
+            jQuery(select).select2({
+                width: '100%',
+                placeholder: 'Выберите...'
+            });
+        }
+    }
+}
+
+
+// ============ 4. SELECT2 ИНИЦИАЛИЗАЦИЯ ============
+
+function initSelect2() {
+    if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+        console.error('Select2 не загружен');
+        return;
+    }
+    
+    jQuery('#document_type, #responsible, #priority, #delivery_mode').select2({
+        width: '100%',
+        placeholder: 'Выберите...',
+        allowClear: true
+    });
+}
+
+
+// ============ 5. ПЕРЕКЛЮЧЕНИЕ РЕЖИМА ДОСТАВКИ ============
+
+function toggleDeliveryMode() {
+    const mode = document.getElementById('delivery_mode').value;
+    const autoBlock = document.getElementById('autoRouteBlock');
+    const manualBlock = document.getElementById('manualRouteBlock');
+
+    if (mode === 'auto') {
+        autoBlock.style.display = 'block';
+        manualBlock.style.display = 'none';
+        return;
+    }
+
+    autoBlock.style.display = 'none';
+    manualBlock.style.display = 'block';
+}
+async function loadAutoRouteIntoManual() {
+    const typeId = document.getElementById('document_type').value;
+    if (!typeId) return;
+
+    const container = document.getElementById('manualStepsContainer');
+    container.innerHTML = '';
+
+    const response = await fetch(`/api/routes/?document_type=${typeId}`);
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const routes = Array.isArray(data) ? data : (data.results || []);
+    if (!routes.length) return;
+
+    routes[0].steps.forEach(step => {
+        addManualStepFromAuto(step);
+    });
+    // 🔥 Установка порядка согласования для радиокнопок ручного маршрута
+    if (routes[0].approval_order) {
+        const approvalRadios = document.getElementsByName('approval_order');
+        approvalRadios.forEach(radio => {
+            radio.checked = (radio.value === routes[0].approval_order);
+    });
+}
+
+}
+
+function addManualStepFromAuto(step) {
+    const container = document.getElementById('manualStepsContainer');
+    const template = document.getElementById('stepTemplate');
+    const clone = template.content.cloneNode(true);
+
+    const card = clone.querySelector('.route-step-card');
+    const badge = card.querySelector('.step-badge');
+    badge.textContent = container.children.length + 1;
+
+    const typeSelect = card.querySelector('.step-target-type');
+    const dataSelect = card.querySelector('.step-data-select');
+
+    if (step.user) {
+        typeSelect.value = 'user';
+        initStepDataSelect(dataSelect, 'user');
+        dataSelect.value = step.user.id;
+    } else if (step.department) {
+        typeSelect.value = 'department';
+        initStepDataSelect(dataSelect, 'department');
+        dataSelect.value = step.department.id;
+    }
+
+    container.appendChild(clone);
+    $(dataSelect).trigger('change');
+}
+
+function moveStepUp(btn) {
+    const card = btn.closest('.route-step-card');
+    const prev = card.previousElementSibling;
+    if (prev) {
+        card.parentNode.insertBefore(card, prev);
+        reindexManualSteps();
+    }
+}
+
+function moveStepDown(btn) {
+    const card = btn.closest('.route-step-card');
+    const next = card.nextElementSibling;
+    if (next) {
+        card.parentNode.insertBefore(next, card);
+        reindexManualSteps();
+    }
+}
+
+
+
+// ============ 6. ЗАГРУЗКА И ОТОБРАЖЕНИЕ МАРШРУТОВ ============
+
+async function updateAutoPreview() {
+    const typeId = document.getElementById('document_type').value;
+    const list = document.getElementById('routePreviewList');
+
+    if (!typeId || !list) return;
+
+    list.innerHTML = '<li><i class="fas fa-spinner fa-spin"></i> Загрузка маршрута...</li>';
+
+    try {
+        const response = await fetch(`/api/routes/?document_type=${typeId}`);
+        if (!response.ok) return;
+
+        const routesData = await response.json();
+        const routes = Array.isArray(routesData) ? routesData : (routesData.results || []);
+        if (!routes.length) return;
+
+        displayRoute(routes[0], list);
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+
+
+function displayRoute(route, listElement) {
+    listElement.innerHTML = '';
+
+    const approvalOrder = route.approval_order || 'parallel';
+    const orderText = approvalOrder === 'parallel' ? 'Параллельное согласование' : 'Последовательное согласование';
+    
+    const headerLi = document.createElement('li');
+    headerLi.style.fontWeight = 'bold';
+    headerLi.style.background = '#e9f2ff';
+    headerLi.style.borderLeft = '2px solid #1a73e8';
+    headerLi.style.padding = '8px';
+    headerLi.textContent = orderText;
+    listElement.appendChild(headerLi);
+
+    route.steps.forEach((step, index) => {
+        const li = document.createElement('li');
+        
+        let stepText = 'Неизвестный шаг';
+        let icon = 'fa-question-circle';
+        
+        if (step.user && step.user.full_name) {
+            stepText = step.user.full_name;
+            icon = 'fa-user';
+        } else if (step.department && step.department.name) {
+            stepText = `Отдел: ${step.department.name}`;
+            icon = 'fa-building';
+        }
+        
+        li.innerHTML = `
+            <span class="step-num">${index + 1}</span>
+            <i class="fas ${icon}"></i>
+            <span>${stepText}</span>
+        `;
+        
+        listElement.appendChild(li);
+    });
+}
+
+
+
+// ============ 7. УПРАВЛЕНИЕ РУЧНЫМ МАРШРУТОМ ============
+
+function addManualStep() {
+    const container = document.getElementById('manualStepsContainer');
+    if (!container) return;
+    
+    const template = document.getElementById('stepTemplate');
+    if (!template) {
+        console.error('stepTemplate не найден');
+        return;
+    }
+    
+    const clone = template.content.cloneNode(true);
+    const card = clone.querySelector('.route-step-card');
+    const cards = container.querySelectorAll('.route-step-card');
+    const stepNumber = cards.length + 1;
+    
+    const badge = card.querySelector('.step-badge');
+    if (badge) badge.textContent = stepNumber;
+    
+    container.appendChild(clone);
+    
+    // Инициализируем Select2 для нового шага
+    const dataSelect = card.querySelector('.step-data-select');
+    if (dataSelect) {
+        initStepDataSelect(dataSelect, 'user');
+    }
+}
+
+
+function initStepDataSelect(selectElement, type) {
+    if (!selectElement) return;
+    
+    // Очищаем и ставим дефолтное значение
+    selectElement.innerHTML = '<option value="">Выберите...</option>';
+    
+    // Определяем источник данных
+    let data = (type === 'user') ? (window.usersData || []) : (window.departmentsData || []);
+    
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        
+        if (type === 'user') {
+            // 1. Берем ФИО (Петров Иван Иванович)
+            // Если full_name пустое, подстрахуемся username
+            let name = `${item.last_name || ''} ${item.first_name || ''} ${item.middle_name || ''}`.trim() || item.username;
+            
+            // 2. Формируем часть в скобках (Менеджер по персоналу-Кадры)
+            let details = [];
+            if (item.position) details.push(item.position);
+            if (item.department_name) details.push(item.department_name);
+            
+            // Соединяем должность и отдел через дефис
+            let infoString = details.join('-'); 
+            
+            // Итоговая строка
+            option.textContent = infoString ? `${name} (${infoString})` : name;
+        } else {
+            // Для отделов просто название
+            option.textContent = item.name || `Отдел ID: ${item.id}`;
+        }
+        
+        selectElement.appendChild(option);
+    });
+
+    // Переинициализация Select2 для корректного отображения
+    if (window.jQuery && jQuery.fn.select2) {
+        $(selectElement).select2({
+            width: '100%',
+            placeholder: 'Выберите...',
+            allowClear: true
+        });
+    }
+}
+
+
+function toggleStepSelect(selectElement) {
+    const card = selectElement.closest('.route-step-card');
+    const dataSelect = card.querySelector('.step-data-select');
+    
+    if (jQuery && jQuery.fn.select2 && dataSelect.classList.contains('select2-hidden-accessible')) {
+        jQuery(dataSelect).select2('destroy');
+    }
+    
+    initStepDataSelect(dataSelect, selectElement.value);
+}
+
+
+function removeStep(button) {
+    const card = button.closest('.route-step-card');
+    const dataSelect = card.querySelector('.step-data-select');
+    
+    if (jQuery && jQuery.fn.select2 && dataSelect.classList.contains('select2-hidden-accessible')) {
+        jQuery(dataSelect).select2('destroy');
+    }
+    
+    card.remove();
+    reindexManualSteps();
+}
+
+
+function reindexManualSteps() {
+    const cards = document.querySelectorAll('#manualStepsContainer .route-step-card');
+    cards.forEach((card, index) => {
+        const badge = card.querySelector('.step-badge');
+        if (badge) badge.textContent = index + 1;
+    });
+}
+
+
+// ============ 8. РАБОТА С ФАЙЛАМИ ============
+
+function initFileUpload() {
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('fileUploadArea');
+    
+    if (!fileInput || !uploadArea) {
+        console.warn('Элементы загрузки файлов не найдены');
+        return;
+    }
+    
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', updateFileList);
+    
+    // Drag & Drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    uploadArea.addEventListener('dragover', function() {
+        this.style.borderColor = '#1a73e8';
+        this.style.backgroundColor = '#f0f7ff';
+    });
+    
+    uploadArea.addEventListener('dragleave', function() {
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+        fileInput.files = e.dataTransfer.files;
+        updateFileList();
+    });
+}
+
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+
+function updateFileList() {
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const fileItemsContainer = document.getElementById('fileItemsContainer');
+    
+    if (!fileInput || !fileList || !fileItemsContainer) return;
+    
+    fileItemsContainer.innerHTML = '';
+    
+    if (fileInput.files.length > 0) {
+        fileList.style.display = 'block';
+        
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const file = fileInput.files[i];
+            
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <i class="fas fa-file"></i>
+                    <span>${file.name} (${formatFileSize(file.size)})</span>
+                </div>
+                <button type="button" class="btn-remove-file" data-index="${i}">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            fileItemsContainer.appendChild(fileItem);
+        }
+        
+        // Добавляем обработчик удаления файлов
+        fileItemsContainer.querySelectorAll('.btn-remove-file').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                removeFile(index);
+            });
+        });
+    } else {
+        fileList.style.display = 'none';
+    }
+}
+
+
+function removeFile(index) {
+    const fileInput = document.getElementById('fileInput');
+    const dt = new DataTransfer();
+    
+    for (let i = 0; i < fileInput.files.length; i++) {
+        if (i !== index) {
+            dt.items.add(fileInput.files[i]);
+        }
+    }
+    
+    fileInput.files = dt.files;
+    updateFileList();
+}
+
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+
+// ============ 9. ОТПРАВКА ФОРМЫ ============
+
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline';
+    submitBtn.disabled = true;
+    
+    try {
+        if (currentDraftId) {
+            await submitExistingDraft('registered');
+            return;
+        }
+        const formData = new FormData();
+        
+        formData.append('title', document.getElementById('title').value);
+        formData.append('document_type', document.getElementById('document_type').value);
+        formData.append('priority', document.getElementById('priority').value);
+        formData.append('description', document.getElementById('description').value);
+        formData.append('deadline', document.getElementById('deadline').value);
+        formData.append('delivery_mode', document.getElementById('delivery_mode').value);
+        formData.append('action_type', document.getElementById('action_type').value);
+        formData.append('status_code', 'registered');
+        
+        const approvalRadios = document.getElementsByName('approval_order');
+        let approvalOrder = 'parallel'; // значение по умолчанию
+        approvalRadios.forEach(radio => {
+            if (radio.checked) approvalOrder = radio.value;
+        });
+        formData.append('approval_order', approvalOrder);
+        
+        // Файлы
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length > 0) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+        }
+        
+        // Ручной маршрут если нужен
+        if (document.getElementById('delivery_mode').value === 'manual') {
+            const manualRoute = collectManualRoute();
+            if (manualRoute.length === 0) {
+                showToast('Добавьте хотя бы одного получателя', 'error');
+                resetSubmitButton();
+                return;
+            }
+            formData.append('manual_route', JSON.stringify(manualRoute));
+        }
+        
+        // CSRF токен
+        const csrfToken = getCookie('csrftoken');
+        
+        const response = await fetch('/api/documents/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showToast('Документ успешно создан!', 'success');
+            
+            setTimeout(() => {
+                window.location.href = '/dashboard/';
+            }, 2000);
+        } else {
+            let errorMessage = 'Ошибка при создании документа';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.message || JSON.stringify(errorData);
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}`;
+            }
+            throw new Error(errorMessage);
+        }
+    } catch (error) {
+        console.error('Ошибка отправки:', error);
+        showToast('Ошибка: ' + error.message, 'error');
+        resetSubmitButton();
+    }
+}
+
+async function handleDraftSubmit() {
+    if (!validateDraft()) return;
+
+    const submitBtn = document.getElementById('draftBtn');
+    submitBtn.disabled = true;
+
+    try {
+        if (currentDraftId) {
+            await submitExistingDraft('draft');
+            return;
+        }
+        const formData = new FormData();
+
+        formData.append('title', document.getElementById('title').value);
+        formData.append('document_type', document.getElementById('document_type').value);
+        formData.append('priority', document.getElementById('priority').value);
+        formData.append('description', document.getElementById('description').value);
+        formData.append('deadline', document.getElementById('deadline').value);
+        formData.append('delivery_mode', document.getElementById('delivery_mode').value);
+        formData.append('action_type', document.getElementById('action_type').value);
+        formData.append('status_code', 'draft');
+
+        const approvalRadios = document.getElementsByName('approval_order');
+        let approvalOrder = 'parallel';
+        approvalRadios.forEach(radio => {
+            if (radio.checked) approvalOrder = radio.value;
+        });
+        formData.append('approval_order', approvalOrder);
+
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length > 0) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+        }
+
+        if (document.getElementById('delivery_mode').value === 'manual') {
+            const manualRoute = collectManualRoute();
+            formData.append('manual_route', JSON.stringify(manualRoute));
+        }
+
+        const csrfToken = getCookie('csrftoken');
+
+        const response = await fetch('/api/documents/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            showToast('Черновик сохранен', 'success');
+            setTimeout(() => {
+                window.location.href = '/dashboard/';
+            }, 1500);
+        } else {
+            let errorMessage = 'Ошибка при сохранении черновика';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.message || JSON.stringify(errorData);
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}`;
+            }
+            throw new Error(errorMessage);
+        }
+    } catch (error) {
+        console.error('Ошибка черновика:', error);
+        showToast('Ошибка: ' + error.message, 'error');
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
+
+async function submitExistingDraft(statusCode) {
+    const csrfToken = getCookie('csrftoken');
+    const approvalRadios = document.getElementsByName('approval_order');
+    let approvalOrder = 'parallel';
+    approvalRadios.forEach(radio => {
+        if (radio.checked) approvalOrder = radio.value;
+    });
+    const manualRoute = document.getElementById('delivery_mode').value === 'manual'
+        ? collectManualRoute()
+        : [];
+
+    const updatePayload = {
+        title: document.getElementById('title').value,
+        document_type: document.getElementById('document_type').value,
+        priority: document.getElementById('priority').value,
+        description: document.getElementById('description').value,
+        deadline: document.getElementById('deadline').value,
+        delivery_mode: document.getElementById('delivery_mode').value,
+        action_type: document.getElementById('action_type').value,
+        approval_order: approvalOrder,
+        manual_route: manualRoute,
+    };
+
+    const updateResponse = await fetch(`/api/documents/${currentDraftId}/`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(updatePayload)
+    });
+
+    if (!updateResponse.ok) {
+        throw new Error(`HTTP ${updateResponse.status}`);
+    }
+
+    if (statusCode === 'draft') {
+        showToast('Черновик обновлен', 'success');
+        setTimeout(() => {
+            window.location.href = '/documents/drafts/';
+        }, 1500);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action_type', updatePayload.action_type);
+
+    formData.append('approval_order', approvalOrder);
+
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('files', fileInput.files[i]);
+        }
+    }
+
+    if (updatePayload.delivery_mode === 'manual') {
+        if (manualRoute.length === 0) {
+            showToast('Добавьте хотя бы одного получателя', 'error');
+            return;
+        }
+        formData.append('manual_route', JSON.stringify(manualRoute));
+    }
+
+    const resubmitResponse = await fetch(`/api/documents/${currentDraftId}/resubmit/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        body: formData
+    });
+
+    if (!resubmitResponse.ok) {
+        throw new Error(`HTTP ${resubmitResponse.status}`);
+    }
+
+    showToast('Документ отправлен', 'success');
+    setTimeout(() => {
+        window.location.href = '/documents/outgoing/';
+    }, 1500);
+}
+
+function validateDraft() {
+    const requiredFields = [
+        { id: 'title', name: 'Название' },
+        { id: 'document_type', name: 'Тип документа' }
+    ];
+
+    let isValid = true;
+
+    requiredFields.forEach(field => {
+        const element = document.getElementById(field.id);
+        const errorElement = document.getElementById(field.id + '-error');
+
+        if (!element || !element.value || element.value.trim() === '') {
+            if (element) element.classList.add('is-invalid');
+            if (errorElement) errorElement.textContent = `${field.name} обязательно`;
+            isValid = false;
+        } else {
+            if (element) element.classList.remove('is-invalid');
+            if (errorElement) errorElement.textContent = '';
+        }
+    });
+
+    return isValid;
+}
+
+
+function collectManualRoute() {
+    const route = [];
+    const cards = document.querySelectorAll('#manualStepsContainer .route-step-card');
+    
+    cards.forEach(card => {
+        const typeSelect = card.querySelector('.step-target-type');
+        const dataSelect = card.querySelector('.step-data-select');
+        
+        if (typeSelect && dataSelect && typeSelect.value && dataSelect.value) {
+            route.push({
+                type: typeSelect.value,
+                id: parseInt(dataSelect.value)
+            });
+        }
+    });
+    
+    return route;
+}
+
+
+function validateForm() {
+    const requiredFields = [
+        { id: 'title', name: 'Название' },
+        { id: 'document_type', name: 'Тип документа' },
+        { id: 'priority', name: 'Приоритет' },
+        { id: 'deadline', name: 'Срок' },
+        { id: 'delivery_mode', name: 'Режим доставки' },
+        { id: 'action_type', name: 'Тип обработки' }
+    ];
+    
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        const element = document.getElementById(field.id);
+        const errorElement = document.getElementById(field.id + '-error');
+        
+        if (!element || !element.value || element.value.trim() === '') {
+            if (element) element.classList.add('is-invalid');
+            if (errorElement) errorElement.textContent = `${field.name} обязательно`;
+            isValid = false;
+        } else {
+            if (element) element.classList.remove('is-invalid');
+            if (errorElement) errorElement.textContent = '';
+        }
+    });
+    
+    return isValid;
+}
+
+
+function resetSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    if (!submitBtn) return;
+    
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    if (btnText) btnText.style.display = 'inline';
+    if (btnLoading) btnLoading.style.display = 'none';
+    submitBtn.disabled = false;
+}
+
+
+// ============ 10. TOAST УВЕДОМЛЕНИЯ ============
+
+function showToast(message, type = 'info') {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        `;
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.cssText = `
+        background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        animation: slideIn 0.3s ease;
+        min-width: 300px;
+        max-width: 400px;
+        word-wrap: break-word;
+    `;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+    }, 4000);
+}
+
+
+// ============ 11. ПОЛУЧЕНИЕ CSRF ТОКЕНА ============
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+// ============ 12. ИНИЦИАЛИЗАЦИЯ ============
+
+// Проверяем загруженность jQuery и Select2
+setTimeout(() => {
+    if (typeof jQuery === 'undefined') {
+        console.error('jQuery не загружена');
+    }
+    if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+        console.error('Select2 не загружена');
+    }
+}, 2000);
+</script>
+{% endblock %}

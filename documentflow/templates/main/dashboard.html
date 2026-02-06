@@ -1,0 +1,274 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Рабочий кабинет | DocumentFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Добро пожаловать, {{ request.user.get_full_name|default:request.user.username }} 👋</h1>
+        <p class="dashboard-subtitle">Вы вошли как <strong>{{ request.user.position }}</strong> | {{ request.user.department }}</p>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e3f2fd;">
+                    <i class="fas fa-inbox" style="color: #2196f3;"></i>
+                </div>
+                <h3 id="incomingCount">{{ incoming_count|default:"0" }}</h3>
+                <p>Входящих документов</p>
+                <small id="incomingUrgent" {% if incoming_urgent %}style="display:inline;"{% else %}style="display:none;"{% endif %}>
+                    {{ incoming_urgent }} требуют внимания
+                </small>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e8f5e9;">
+                    <i class="fas fa-check-circle" style="color: #4caf50;"></i>
+                </div>
+                <h3 id="approvalCount">{{ approval_count|default:"0" }}</h3>
+                <p>На согласовании</p>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fff3e0;">
+                    <i class="fas fa-clock" style="color: #ff9800;"></i>
+                </div>
+                <h3 id="overdueCount">{{ overdue_count|default:"0" }}</h3>
+                <p>Просроченных</p>
+                <small>Требуют срочного исполнения</small>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #f3e5f5;">
+                    <i class="fas fa-chart-line" style="color: #9c27b0;"></i>
+                </div>
+                <h3 id="processedToday">{{ processed_today|default:"0" }}</h3>
+                <p>Обработано сегодня</p>
+                <small>Ваша эффективность работы</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-content">
+        <style>
+            .content-row {
+                align-items: stretch;
+            }
+            .content-col {
+                display: flex;
+            }
+            .dashboard-section {
+                width: 100%;
+                height: 100%;
+            }
+            .chart-container {
+                height: 460px;
+            }
+            .chart-container canvas {
+                width: 100% !important;
+                height: 100% !important;
+            }
+        </style>
+        <div class="content-row">
+            <div class="content-col">
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Срочные документы</h2>
+                        <a href="/documents/incoming/?urgency=urgent" class="btn btn-sm btn-secondary">Все срочные</a>
+                    </div>
+                    <div class="documents-list">
+                        {% for doc in urgent_documents %}
+                        <div class="document-item {% if doc.is_overdue %}overdue{% endif %}">
+                            <div class="document-info">
+                                <h4>{{ doc.title }}</h4>
+                                <p>{{ doc.description|truncatechars:100 }}</p>
+                                <div class="document-meta">
+                                    <span class="document-number">{{ doc.registration_number }}</span>
+                                    <span class="document-date">{{ doc.created_at|date:"d.m.Y" }}</span>
+                                    <span class="document-deadline">
+                                        <i class="fas fa-clock"></i> {{ doc.deadline|date:"d.m.Y" }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="document-actions">
+                                <a href="/documents/incoming/?open={{ doc.id }}" class="btn btn-sm btn-primary">Открыть</a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <p>Срочных документов нет</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="content-col">
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Последние уведомления</h2>
+                        <button onclick="toggleNotifications()" class="btn btn-sm btn-secondary">Все уведомления</button>
+                    </div>
+                    <div class="notifications-list">
+                        {% for notification in recent_notifications %}
+                        <div class="notification-item {% if not notification.read %}unread{% endif %}">
+                            <div class="notification-icon">
+                                <i class="fas fa-{{ notification.icon }}"></i>
+                            </div>
+                            <div class="notification-content">
+                                <p>{{ notification.message }}</p>
+                                <small>{{ notification.created_at|timesince }} назад</small>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">
+                            <i class="fas fa-bell-slash"></i>
+                            <p>Уведомлений нет</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-row">
+            <div class="content-col">
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Статистика за неделю</h2>
+                    </div>
+                    <div class="chart-container" style="min-height: 320px;">
+                        <canvas id="weeklyStatsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function apiFetch(url, options = {}) {
+    return fetch(url, { credentials: 'same-origin', ...options });
+}
+
+function parseDate(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function isSameDate(a, b) {
+    return a && b
+        && a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+}
+
+function updateStatsUI({ incomingCount, urgentCount, approvalCount, approvalOverdue, overdueCount, processedToday }) {
+    const incomingCountEl = document.getElementById('incomingCount');
+    const incomingUrgentEl = document.getElementById('incomingUrgent');
+    const approvalCountEl = document.getElementById('approvalCount');
+    const approvalOverdueEl = document.getElementById('approvalOverdue');
+    const overdueCountEl = document.getElementById('overdueCount');
+    const processedTodayEl = document.getElementById('processedToday');
+
+    if (incomingCountEl) incomingCountEl.textContent = incomingCount;
+    if (approvalCountEl) approvalCountEl.textContent = approvalCount;
+    if (overdueCountEl) overdueCountEl.textContent = overdueCount;
+    if (processedTodayEl) processedTodayEl.textContent = processedToday;
+
+    if (incomingUrgentEl) {
+        if (urgentCount > 0) {
+            incomingUrgentEl.textContent = `${urgentCount} требуют внимания`;
+            incomingUrgentEl.style.display = 'inline';
+        } else {
+            incomingUrgentEl.style.display = 'none';
+        }
+    }
+    if (approvalOverdueEl) {
+        if (approvalOverdue > 0) {
+            approvalOverdueEl.textContent = `${approvalOverdue} просрочено`;
+            approvalOverdueEl.style.display = 'inline';
+        } else {
+            approvalOverdueEl.style.display = 'none';
+        }
+    }
+}
+
+async function loadDashboardStats() {
+    try {
+        const statsResp = await apiFetch('/api/dashboard/stats/');
+        const statsData = await statsResp.json();
+
+        updateStatsUI({
+            incomingCount: Number(statsData.incoming_count || 0),
+            urgentCount: Number(statsData.incoming_urgent || 0),
+            approvalCount: Number(statsData.approval_count || 0),
+            approvalOverdue: Number(statsData.approval_overdue || 0),
+            overdueCount: Number(statsData.overdue_count || 0),
+            processedToday: Number(statsData.processed_today || 0)
+        });
+    } catch (e) {
+        updateStatsUI({
+            incomingCount: '—',
+            urgentCount: 0,
+            approvalCount: '—',
+            approvalOverdue: 0,
+            overdueCount: '—',
+            processedToday: '—'
+        });
+    }
+}
+
+// Инициализация графика статистики
+const ctx = document.getElementById('weeklyStatsChart').getContext('2d');
+const weeklyStatsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ weekly_labels|safe }},
+        datasets: [{
+            label: 'Обработано документов',
+            data: {{ weekly_stats|safe }},
+            borderColor: '#1a73e8',
+            backgroundColor: 'rgba(26, 115, 232, 0.1)',
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardStats();
+});
+</script>
+{% endblock %}

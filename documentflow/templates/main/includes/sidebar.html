@@ -1,0 +1,59 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-menu">
+        <nav class="menu">
+            <a href="/dashboard/" class="menu-item {% if request.path == '/dashboard/' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Рабочий стол</span>
+            </a>
+            <div class="menu-section">
+                <h5>Документы</h5>
+                <a href="{% url 'documentflow:incoming_documents_page' %}" class="menu-item {% if 'incoming' in request.path %}active{% endif %}">
+                    <i class="fas fa-inbox"></i>
+                    <span>Входящие</span>
+                </a>
+                <a href="/documents/outgoing/" class="menu-item {% if 'outgoing' in request.path %}active{% endif %}">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Исходящие</span>
+                </a>
+                <a href="/documents/drafts/" class="menu-item {% if 'drafts' in request.path %}active{% endif %}">
+                    <i class="fas fa-edit"></i>
+                    <span>Черновики</span>
+                </a>
+                <a href="{% url 'documentflow:archive_documents_page' %}" class="menu-item {% if 'archive' in request.path %}active{% endif %}">
+                    <i class="fas fa-archive"></i>
+                    <span>Архив</span>
+                </a>
+            </div>
+            
+            {% if request.user.is_superuser %}
+                <div class="menu-section">
+                    <h5>Администрирование</h5>
+                    <a href="/admin/users/" class="menu-item">
+                        <i class="fas fa-users-cog"></i>
+                        <span>Сотрудники</span>
+                    </a>
+                    <a href="/admin/logs/" class="menu-item">
+                        <i class="fas fa-history"></i>
+                        <span>Журнал действий</span>
+                    </a>
+                </div>
+            {% endif %}
+            
+            <div class="menu-section">
+                <h5>Настройки</h5>
+                <a href="{% url 'documentflow:profile_page' %}" class="menu-item {% if 'profile' in request.path %}active{% endif %}">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Профиль</span>
+                </a>
+                <a href="{% url 'documentflow:stats_page' %}" class="menu-item {% if 'stats' in request.path %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Статистика</span>
+                </a>
+                <a href="{% url 'documentflow:replacements_page' %}" class="menu-item {% if 'replacements' in request.path %}active{% endif %}">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Замена</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+</aside>

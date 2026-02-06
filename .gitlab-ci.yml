@@ -1,0 +1,74 @@
+stages:
+  - build
+  - lint
+  - functional
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DJANGO_SETTINGS_MODULE: "myproject.settings"
+  SECRET_KEY: "ci-secret-key"
+  DB_NAME: "gitlab_ci"
+  DB_USER: "gitlab_ci"
+  DB_PASSWORD: "gitlab_ci"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+
+.default_python:
+  image: python:3.11
+  cache:
+    paths:
+      - .cache/pip
+  before_script:
+    - python -V
+    - pip install --upgrade pip
+    - pip install -r requirements.txt psycopg2-binary
+
+build_project:
+  stage: build
+  extends: .default_python
+  script:
+    - mkdir -p artifacts
+    - python manage.py collectstatic --noinput > artifacts/collectstatic.txt
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - artifacts/collectstatic.txt
+      - staticfiles/
+
+lint_flake8:
+  stage: lint
+  extends: .default_python
+  script:
+    - pip install flake8
+    - mkdir -p artifacts
+    - flake8 . --exclude venv,.venv,**/migrations/* --max-line-length=120 > artifacts/flake8.txt
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - artifacts/flake8.txt
+
+migrations_check:
+  stage: functional
+  extends: .default_python
+  script:
+    - mkdir -p artifacts
+    - python manage.py makemigrations --check --dry-run > artifacts/migrations-check.txt
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - artifacts/migrations-check.txt
+
+django_check:
+  stage: functional
+  extends: .default_python
+  script:
+    - mkdir -p artifacts
+    - python manage.py check > artifacts/django-check.txt
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - artifacts/django-check.txt

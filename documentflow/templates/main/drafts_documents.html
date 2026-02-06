@@ -1,0 +1,379 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Черновики | DocumentFlow{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/documents.css' %}">
+<style>
+    :root {
+        --df-bg: #f2f4f7;
+        --df-surface: #ffffff;
+        --df-text: #1f2328;
+        --df-muted: #6b7280;
+        --df-primary: #0d5bd3;
+        --df-primary-dark: #0a46a6;
+        --df-border: #e3e7ee;
+    }
+
+    body {
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        background: var(--df-bg);
+        color: var(--df-text);
+    }
+
+    .page {
+        padding: 24px;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 24px;
+        background: var(--df-surface);
+        border-radius: 10px;
+        border: 1px solid var(--df-border);
+        margin-bottom: 16px;
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+    }
+
+    .page-subtitle {
+        font-size: 13px;
+        color: var(--df-muted);
+    }
+
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        background: var(--df-surface);
+        border: 1px solid var(--df-border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .filter-group label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--df-muted);
+        margin-bottom: 6px;
+        font-weight: 700;
+    }
+
+    .filter-group input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--df-border);
+        border-radius: 6px;
+        background: #fff;
+        font-size: 14px;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .btn {
+        border: none;
+        border-radius: 6px;
+        padding: 8px 14px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .btn-primary {
+        background: var(--df-primary);
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: var(--df-primary-dark);
+    }
+
+    .btn-secondary {
+        background: #eef1f6;
+        color: var(--df-text);
+    }
+
+    .table-wrapper {
+        background: var(--df-surface);
+        border: 1px solid var(--df-border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    thead {
+        background: #f6f8fb;
+        border-bottom: 1px solid var(--df-border);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid var(--df-border);
+        transition: background 0.2s ease;
+    }
+
+    .reg-link {
+        color: var(--df-primary);
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--df-muted);
+    }
+
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 70px 20px 20px 20px;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-card {
+        background: var(--df-surface);
+        border-radius: 12px;
+        border: 1px solid var(--df-border);
+        max-width: 960px;
+        width: 100%;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .modal-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        overflow-y: auto;
+        padding-right: 6px;
+    }
+
+    .detail-card {
+        border: 1px solid var(--df-border);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fbfcfe;
+    }
+
+    .detail-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--df-muted);
+        margin-bottom: 6px;
+        font-weight: 700;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .detail-full {
+        grid-column: 1 / -1;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Черновики</h1>
+            <div class="page-subtitle">Документы, сохраненные для доработки</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="filter-group">
+            <label>Поиск</label>
+            <input id="searchInput" type="text" placeholder="Номер или тема" oninput="applyFilters()">
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
+            <button class="btn btn-secondary" onclick="resetFilters()">Сброс</button>
+        </div>
+    </div>
+
+    <div id="documentsContainer" class="table-wrapper">
+        <div class="empty">Загрузка документов...</div>
+    </div>
+</div>
+
+<div id="documentModal" class="modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title" id="modalTitle"></div>
+            <button class="btn btn-secondary" onclick="closeModal()">Закрыть</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="resubmitDocument()">Отправить повторно</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    let currentDocument = null;
+    let draftStatusId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDraftStatus().then(loadDocuments);
+    });
+
+    function loadDraftStatus() {
+        return fetch('/api/document-statuses/')
+            .then(r => r.json())
+            .then(data => {
+                const draft = data.find(item => item.name.toLowerCase().includes('черновик'));
+                if (draft) {
+                    draftStatusId = draft.id;
+                }
+            });
+    }
+
+    function buildUrl() {
+        let url = `/api/documents/my/?page=${currentPage}`;
+        const search = document.getElementById('searchInput').value;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (draftStatusId) url += `&status=${draftStatusId}`;
+        return url;
+    }
+
+    function loadDocuments() {
+        const container = document.getElementById('documentsContainer');
+        container.innerHTML = '<div class="empty">Загрузка документов...</div>';
+
+        fetch(buildUrl())
+            .then(r => r.json())
+            .then(data => renderDocuments(data.results || data))
+            .catch(() => {
+                container.innerHTML = '<div class="empty">Ошибка загрузки документов</div>';
+            });
+    }
+
+    function renderDocuments(documents) {
+        const container = document.getElementById('documentsContainer');
+        if (!documents || documents.length === 0) {
+            container.innerHTML = '<div class="empty">Черновиков нет</div>';
+            return;
+        }
+
+        let html = `<table>
+            <thead>
+                <tr>
+                    <th>Номер</th>
+                    <th>Тема</th>
+                    <th>Статус</th>
+                    <th>Срок</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        documents.forEach(doc => {
+            html += `<tr>
+                <td><span class="reg-link" onclick="openDocument(${doc.id})">${doc.registration_number || '—'}</span></td>
+                <td>${doc.title}</td>
+                <td>${doc.status}</td>
+                <td>${doc.deadline ? new Date(doc.deadline).toLocaleDateString('ru-RU') : '—'}</td>
+                <td><button class="btn btn-secondary" onclick="openDocument(${doc.id})">Открыть</button></td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function openDocument(id) {
+        window.location.href = `/documents/create/?draft_id=${id}`;
+    }
+
+    function closeModal() {}
+    function resubmitDocument() {}
+
+    function applyFilters() {
+        currentPage = 1;
+        loadDocuments();
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        applyFilters();
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

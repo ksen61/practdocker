@@ -1,0 +1,149 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Вход в DocumentFlow{% endblock %}
+
+{% block content %}
+<style>
+    .input-group {
+        position: relative;
+    }
+    .password-toggle {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+    }
+    .password-toggle:hover {
+        color: #6b7280;
+    }
+</style>
+<div class="auth-wrapper">
+    <div class="auth-box">
+        <div class="auth-header">
+            <i class="fas fa-file-contract logo-icon"></i>
+            <h2>DocumentFlow</h2>
+            <p>Система электронного документооборота</p>
+        </div>
+
+        <form id="login-form" method="post" onsubmit="login(event)">
+            {% csrf_token %}
+            <div class="input-group">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" name="username" id="username" placeholder="Логин" required>
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" name="password" id="password" placeholder="Пароль" required>
+                <button type="button" class="password-toggle" onclick="togglePassword('password', this)">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <button type="submit" class="btn-primary btn-block">Войти</button>
+            <div id="error-message" class="error-message" style="display: none;"></div>
+        </form>
+
+        <div class="auth-footer">
+            <a href="/password-reset/">Забыли пароль?</a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Получаем CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) {
+        icon.classList.toggle('fa-eye', !isHidden);
+        icon.classList.toggle('fa-eye-slash', isHidden);
+    }
+}
+
+function login(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('error-message');
+    
+    // Скрываем предыдущие ошибки
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+    
+    // Отправляем запрос на API
+    fetch('/api/login/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            username: username,
+            password: password
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Ошибка входа');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Успешный вход
+        console.log('Вход успешен:', data);
+        
+        // Перенаправляем на нужную страницу
+        if (data.must_change_password) {
+            window.location.href = '/password-change/';
+        } else {
+            window.location.href = '/dashboard/';
+        }
+    })
+    .catch(error => {
+        // Показываем ошибку
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+        console.error('Ошибка входа:', error);
+    });
+}
+
+// Проверяем, может пользователь уже вошел
+fetch('/api/check-auth/')
+    .then(response => response.json())
+    .then(data => {
+        if (data.authenticated) {
+            if (data.must_change_password) {
+                window.location.href = '/password-change/';
+            } else {
+                window.location.href = '/dashboard/';
+            }
+        }
+    })
+    .catch(() => {});
+</script>
+{% endblock %}

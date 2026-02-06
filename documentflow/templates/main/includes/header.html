@@ -1,0 +1,39 @@
+<header class="header">
+    <div class="header-container">
+        <a href="/" class="logo">
+            <i class="fas fa-file-contract"></i>
+            <span>DocumentFlow</span>
+        </a>
+
+        <div class="header-controls">
+            {% if request.user.is_authenticated %}
+                <!-- Блок для авторизованного пользователя -->
+                <button class="btn btn-sm btn-secondary notification-btn" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span id="notification-count" {% if request.user.unread_notifications <= 0 %}style="display:none;"{% endif %}>
+                        {{ request.user.unread_notifications }}
+                    </span>
+                </button>
+                
+                <a href="{% url 'documentflow:profile_page' %}" class="user-info">
+                    <div class="user-details">
+                        <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+                        {% if request.user.position %}
+                            <small>{{ request.user.position }}</small>
+                        {% endif %}
+                    </div>
+                </a>
+
+            {% elif request.path != '/' %}
+                {# Кнопка "Войти" скрыта по требованию #}
+            {% endif %}
+            
+            <!-- Кнопка мобильного меню показывается везде, кроме страницы логина -->
+            {% if request.path != '/'%}
+                <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</header>

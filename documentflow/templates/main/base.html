@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DocumentFlow - Система электронного документооборота{% endblock %}</title>
+    
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    
+    <!-- Дополнительные CSS -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="
+    {% if request.user.is_authenticated and request.path != '/password-change/' %}
+        has-sidebar
+    {% else %}
+        no-sidebar auth-page
+    {% endif %}
+    ">
+    <div class="layout {% if not request.user.is_authenticated or request.path == '/' or request.path == '/password-change/' %}no-sidebar{% endif %}">
+        {% include 'main/includes/header.html' %}
+    
+        <div class="layout-main">
+            {% if request.user.is_authenticated and request.path != '/' and request.path != '/password-change/' %}
+                {% include 'main/includes/sidebar.html' %}
+            {% endif %}
+    
+            <main class="main-content" id="main-content">
+                {% if messages %}
+                    <div class="messages-container">
+                        {% for message in messages %}
+                            <div class="message {{ message.tags }}">
+                                {{ message }}
+                                <button class="message-close">&times;</button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+    
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    
+        {% if request.path == '/' or request.path == '/password-change/' or request.path == '/password-reset/' or request.path == '/password-reset/done/' or request.path == '/reset/done/' or request.path|slice:":7" == "/reset/" %}
+            {# Футер скрыт на страницах авторизации/смены/сброса #}
+        {% else %}
+            <footer class="footer">
+                {% include 'main/includes/footer.html' %}
+            </footer>
+        {% endif %}
+    </div>
+    
+    <!-- Уведомления -->
+    {% if request.user.is_authenticated %}
+        <div class="notifications-panel" id="notificationsPanel" style="display: none;">
+            <div class="notifications-header">
+                <h3>Уведомления</h3>
+                <button onclick="markAllAsRead()">Отметить всё как прочитанное</button>
+            </div>
+            <div id="notificationsList"></div>
+        </div>
+        <div class="toast-container" id="toastContainer"></div>
+    {% endif %}
+    
+    <!-- Скрипты -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+    {% if request.user.is_authenticated %}
+    <script>
+    const notificationIconMap = {
+        new_document: 'inbox',
+        deadline: 'clock',
+        approval: 'check-circle',
+        assignment: 'tasks',
+        status_change: 'exchange-alt',
+        comment: 'comment',
+        system: 'info-circle',
+    };
+
+    function toggleNotifications() {
+        const panel = document.getElementById('notificationsPanel');
+        if (!panel) return;
+        const isOpen = panel.style.display === 'block';
+        panel.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) {
+            loadNotifications();
+        }
+    }
+
+    function closeNotificationsPanel(event) {
+        const panel = document.getElementById('notificationsPanel');
+        if (!panel || panel.style.display !== 'block') return;
+        if (panel.contains(event.target) || event.target.closest('.notification-btn')) return;
+        panel.style.display = 'none';
+    }
+
+    async function markNotificationRead(id) {
+        try {
+            await fetch(`/api/notifications/${id}/read/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                credentials: 'same-origin'
+            });
+            loadNotifications();
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function renderNotifications(items) {
+        const list = document.getElementById('notificationsList');
+        if (!list) return;
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state"><p>Уведомлений нет</p></div>';
+            return;
+        }
+        list.innerHTML = items.map(n => `
+            <div class="notification-item ${n.is_read ? '' : 'unread'}">
+                <div class="notification-icon">
+                    <i class="fas fa-${notificationIconMap[n.type] || 'info-circle'}"></i>
+                </div>
+                <div class="notification-content">
+                    <p>${n.title}${n.text ? ': ' + n.text : ''}</p>
+                    <small>${new Date(n.created_at).toLocaleString('ru-RU')}</small>
+                    ${n.link ? `<div><a href="${n.link}" data-notification-id="${n.id}" class="notification-link">Открыть</a></div>` : ''}
+                </div>
+            </div>
+        `).join('');
+        list.querySelectorAll('.notification-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-notification-id');
+                if (id) markNotificationRead(id);
+            });
+        });
+    }
+
+    function updateNotificationCount(count) {
+        const badge = document.getElementById('notification-count');
+        if (!badge) return;
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function showToast(notification) {
+        if (typeof notification === 'string') {
+            notification = { title: notification, text: '', link: '', id: null };
+        }
+        if (!notification || typeof notification !== 'object') return;
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `
+            <div class="toast-title">${notification.title || ''}</div>
+            <div class="toast-text">${notification.text || ''}</div>
+        `;
+        toast.onclick = () => {
+            if (notification.link) {
+                if (notification.id) markNotificationRead(notification.id);
+                window.location.href = notification.link;
+            }
+        };
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 50);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 200);
+        }, 6000);
+    }
+
+    async function loadNotifications(showToastOnNew = false) {
+        try {
+            const res = await fetch('/api/notifications/', { credentials: 'same-origin' });
+            const data = await res.json();
+            renderNotifications(data.results || []);
+            updateNotificationCount(data.unread_count || 0);
+
+            if (showToastOnNew) {
+                const lastSeen = Number(localStorage.getItem('lastNotificationId') || 0);
+                const newest = data.results && data.results.length ? data.results[0] : null;
+                if (newest && newest.id > lastSeen) {
+                    showToast(newest);
+                    localStorage.setItem('lastNotificationId', String(newest.id));
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    async function markAllAsRead() {
+        try {
+            await fetch('/api/notifications/mark-all-read/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                credentials: 'same-origin'
+            });
+            loadNotifications();
+            document.querySelectorAll('.notifications-list .notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+            });
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadNotifications(true);
+        setInterval(() => loadNotifications(true), 60000);
+    });
+    document.addEventListener('click', closeNotificationsPanel);
+    </script>
+    <style>
+        .toast-container {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background: #1f2937;
+            color: #fff;
+            padding: 12px 14px;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            min-width: 240px;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .toast-text {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+    </style>
+    {% endif %}
+    
+    <!-- Дополнительные скрипты -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
