@@ -7,6 +7,12 @@ variables:
   DJANGO_SETTINGS_MODULE: "myproject.settings"
   VENV_PATH: ".venv"
   SECRET_KEY: "ci-secret-key"
+  DB_NAME: "gitlab_ci"
+  DB_USER: "gitlab_ci"
+  DB_PASSWORD: "gitlab_ci"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+
 
 .before_shell:
   cache:
