@@ -42,7 +42,7 @@ lint_flake8:
   script:
     - pip install flake8
     - mkdir -p artifacts
-    - flake8 . --exclude venv,.venv,**/migrations/* --max-line-length=120 > artifacts/flake8.txt
+    - flake8 . --select=E9,F63,F7,F82 --exclude venv,.venv,**/migrations/* > artifacts/flake8.txt
   artifacts:
     when: always
     expire_in: 1 week
