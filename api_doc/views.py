@@ -1000,18 +1000,18 @@ class DocumentApprovalViewSet(viewsets.ModelViewSet):
             'execute': 'На исполнении',
         }
         status_name = action_status_map.get(action_type, 'На согласовании')
-        status = DocumentStatus.objects.filter(name__iexact=status_name).first()
-        if not status:
-            status, _ = DocumentStatus.objects.get_or_create(
+        doc_status = DocumentStatus.objects.filter(name__iexact=status_name).first()
+        if not doc_status:
+            doc_status, _ = DocumentStatus.objects.get_or_create(
                 name=status_name,
                 defaults={'color': '#6c757d', 'is_final': False}
             )
-        if status and getattr(status, 'is_final', False):
-            status.is_final = False
-            status.save(update_fields=['is_final'])
-        if not status:
-            status = DocumentStatus.objects.order_by('id').first()
-        if not status:
+        if doc_status and getattr(doc_status, 'is_final', False):
+            doc_status.is_final = False
+            doc_status.save(update_fields=['is_final'])
+        if not doc_status:
+            doc_status = DocumentStatus.objects.order_by('id').first()
+        if not doc_status:
             return Response({
                 'status': 'error',
                 'message': 'Не найден статус для повторной отправки'
@@ -1020,7 +1020,8 @@ class DocumentApprovalViewSet(viewsets.ModelViewSet):
         if action_type in ['approve', 'acknowledge', 'execute']:
             document.action_type = action_type
 
-        document.status = status
+        document.status = doc_status
+
         document.actual_deadline = None
         document.save(update_fields=['status', 'action_type', 'actual_deadline'])
 
