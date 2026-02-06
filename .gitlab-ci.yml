@@ -6,6 +6,7 @@ stages:
 variables:
   DJANGO_SETTINGS_MODULE: "myproject.settings"
   VENV_PATH: ".venv"
+  SECRET_KEY: "ci-secret-key"
 
 .before_shell:
   cache:
