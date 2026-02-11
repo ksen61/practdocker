@@ -15,15 +15,15 @@ variables:
 
 .before_shell:
   cache:
-    key: "venv-v2"
+    key: "venv-v3"
     paths:
       - .venv/
   before_script:
     - rm -rf $VENV_PATH
     - python3 -m venv $VENV_PATH
     - $VENV_PATH/bin/pip install --upgrade pip
-    - $VENV_PATH/bin/pip install setuptools==82.0.0
     - $VENV_PATH/bin/pip install -r requirements.txt
+
 
 
 build_project:
